@@ -1,6 +1,8 @@
 Parqueadero Autos Colombia - Sistema de Gestión
 Descripción
-Sistema de información para la gestión de operaciones del parqueadero "Autos Colombia", que presta servicio de parqueadero por mensualidad. Este proyecto implementa la Iteración 1: Gestión de Entrada y Salida de Vehículos.
+Sistema de información para la gestión de operaciones del parqueadero "Autos Colombia", que presta servicio de parqueadero por mensualidad. Este proyecto implementa la Iteración 1,2 y 3: Gestión de Entrada y Salida de Vehículos
+•Gestión de Usuarios y gestión de celdas
+•Gestión de Pagos
 
 Características Principales
 Iteración 1 - Gestión de Entrada y Salida de Vehículos
