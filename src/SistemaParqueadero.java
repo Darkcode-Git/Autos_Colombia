@@ -1,289 +1,211 @@
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
-public class SistemaParqueadero {
-    public static void main(String[] args) {
-        Parqueadero autosColombia = new Parqueadero("Autos Colombia",  50);
-        Scanner scanner = new Scanner(System.in);
-        int opcion;
-
-        do {
-            mostrarMenu();
-            opcion = scanner.nextInt();
-            scanner.nextLine();
-
-            switch (opcion) {
-                case 1:  registrarEntradaVehiculo(autosColombia,  scanner); break;
-                case 2:  registrarSalidaVehiculo(autosColombia,  scanner); break;
-                case 3:  registrarUsuario(autosColombia,  scanner); break;
-                case 4:  gestionarCeldas(autosColombia); break;
-                case 5:  registrarNovedad(autosColombia,  scanner); break;
-                case 6:  gestionarPagos(autosColombia,  scanner); break;
-                case 7:  System.out.println("Gracias por usar el sistema de Autos Colombia."); break;
-                default:  System.out.println("Opción no válida. Intente nuevamente.");
-            }
-        } while (opcion != 7);
-
-        scanner.close();
+enum CategoriaVehiculo {
+    AUTOMOVIL(12000, 800, 12000, 60000),   
+    MOTOCICLETA(7000, 500, 7000, 35000),   
+    CAMIONETA(15000, 1000, 15000, 75000),   
+    BICICLETA(4000, 300, 4000, 20000);
+    
+    private final int tarifaHora;
+    private final int tarifaDia;
+    private final int tarifaNoche;
+    private final int tarifaSemana;
+    
+    CategoriaVehiculo(int tarifaHora, int tarifaDia, int tarifaNoche, int tarifaSemana) {
+        this.tarifaHora = tarifaHora;
+        this.tarifaDia = tarifaDia;
+        this.tarifaNoche = tarifaNoche;
+        this.tarifaSemana = tarifaSemana;
     }
+    
+    public int getTarifaHora() { return tarifaHora; }
+    public int getTarifaDia() { return tarifaDia; }
+    public int getTarifaNoche() { return tarifaNoche; }
+    public int getTarifaSemana() { return tarifaSemana; }
+}
 
-    private static void mostrarMenu() {
-        System.out.println("\n=== SISTEMA PARQUEADERO AUTOS COLOMBIA ===");
-        System.out.println("1. Registrar entrada de vehículo");
-        System.out.println("2. Registrar salida de vehículo");
-        System.out.println("3. Registrar usuario");
-        System.out.println("4. Gestionar celdas");
-        System.out.println("5. Registrar novedad");
-        System.out.println("6. Gestionar pagos");
-        System.out.println("7. Salir");
-        System.out.print("Seleccione una opción:  ");
+enum TipoPeriodo {
+    HORA, DIA, NOCHE, SEMANA, MENSUALIDAD
+}
+
+enum MetodoPago {
+    EFECTIVO, TARJETA, TRANSFERENCIA, NEQUI, DAVIPLATA
+}
+
+interface ICalcMora {
+    double calcularMora(Pago pago, LocalDateTime fechaActual);
+}
+
+interface IGestorPagos {
+    void crearPago(Pago pago);
+    Pago obtenerPago(String id);
+    List<Pago> obtenerTodosLosPagos();
+    List<Pago> obtenerPagosPorUsuario(Usuario usuario);
+    List<Pago> obtenerPagosPorCategoria(CategoriaVehiculo categoria);
+    List<Pago> obtenerPagosPorTipo(TipoPeriodo tipo);
+    List<Pago> obtenerPagosPorMetodo(MetodoPago metodo);
+    List<Pago> obtenerPagosPorRangoFechas(LocalDateTime inicio, LocalDateTime fin);
+    void actualizarPago(Pago pago);
+    void eliminarPago(String id);
+    double calcularTotalIngresos();
+    double calcularTotalMora();
+}
+
+class Usuario {
+    private final String id;
+    private final String nombre;
+    private final String identificacion;
+    private final String correo;
+    private final String telefono;
+    private boolean esMensualidad;
+    private CategoriaVehiculo categoriaPreferida;
+    
+    public Usuario(String nombre, String identificacion, String correo, String telefono,  
+                   boolean esMensualidad, CategoriaVehiculo categoriaPreferida) {
+        this.id = UUID.randomUUID().toString();
+        this.nombre = nombre;
+        this.identificacion = identificacion;
+        this.correo = correo;
+        this.telefono = telefono;
+        this.esMensualidad = esMensualidad;
+        this.categoriaPreferida = categoriaPreferida;
     }
-
-    private static void registrarEntradaVehiculo(Parqueadero parqueadero,  Scanner scanner) {
-        System.out.print("Ingrese la placa del vehículo:  ");
-        String placa = scanner.nextLine();
-
-        System.out.print("Ingrese el tipo de vehículo (CARRO/MOTO):  ");
-        String tipo = scanner.nextLine().toUpperCase();
-
-        System.out.print("Ingrese el ID del usuario:  ");
-        String idUsuario = scanner.nextLine();
-
-        try {
-            Vehiculo.TipoVehiculo tipoVehiculo = Vehiculo.TipoVehiculo.valueOf(tipo);
-            Vehiculo vehiculo = new Vehiculo(placa,  tipoVehiculo);
-            parqueadero.registrarEntrada(vehiculo,  idUsuario);
-            System.out.println("Entrada registrada exitosamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Tipo de vehículo no válido. Debe ser CARRO o MOTO.");
-        } catch (Exception e) {
-            System.out.println("Error al registrar entrada:  " + e.getMessage());
-        }
-    }
-
-    private static void registrarSalidaVehiculo(Parqueadero parqueadero,  Scanner scanner) {
-        System.out.print("Ingrese la placa del vehículo:  ");
-        String placa = scanner.nextLine();
-
-        try {
-            parqueadero.registrarSalida(placa);
-            System.out.println("Salida registrada exitosamente.");
-        } catch (Exception e) {
-            System.out.println("Error al registrar salida:  " + e.getMessage());
-        }
-    }
-
-    private static void registrarUsuario(Parqueadero parqueadero,  Scanner scanner) {
-        System.out.print("Ingrese el ID del usuario:  ");
-        String id = scanner.nextLine();
-
-        System.out.print("Ingrese el nombre del usuario:  ");
-        String nombre = scanner.nextLine();
-
-        System.out.print("Ingrese el teléfono del usuario:  ");
-        String telefono = scanner.nextLine();
-
-        System.out.print("Ingrese el tipo de usuario (CLIENTE/ADMIN):  ");
-        String tipo = scanner.nextLine().toUpperCase();
-
-        try {
-            Usuario.TipoUsuario tipoUsuario = Usuario.TipoUsuario.valueOf(tipo);
-            Usuario usuario = new Usuario(id,  nombre,  telefono,  tipoUsuario);
-            parqueadero.registrarUsuario(usuario);
-            System.out.println("Usuario registrado exitosamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Tipo de usuario no válido. Debe ser CLIENTE o ADMIN.");
-        } catch (Exception e) {
-            System.out.println("Error al registrar usuario:  " + e.getMessage());
-        }
-    }
-
-    private static void gestionarCeldas(Parqueadero parqueadero) {
-        System.out.println("\n=== ESTADO DE CELDAS ===");
-        System.out.println("Total de celdas:  " + parqueadero.getTotalCeldas());
-        System.out.println("Celdas disponibles:  " + parqueadero.getCeldasDisponibles());
-        System.out.println("Celdas ocupadas:  " + (parqueadero.getTotalCeldas() - parqueadero.getCeldasDisponibles()));
-    }
-
-    private static void registrarNovedad(Parqueadero parqueadero,  Scanner scanner) {
-        System.out.print("Ingrese la placa del vehículo:  ");
-        String placa = scanner.nextLine();
-
-        System.out.print("Ingrese la descripción de la novedad:  ");
-        String descripcion = scanner.nextLine();
-
-        try {
-            parqueadero.registrarNovedad(placa,  descripcion);
-            System.out.println("Novedad registrada exitosamente.");
-        } catch (Exception e) {
-            System.out.println("Error al registrar novedad:  " + e.getMessage());
-        }
-    }
-
-    private static void gestionarPagos(Parqueadero parqueadero,  Scanner scanner) {
-        System.out.print("Ingrese la placa del vehículo para calcular pago:  ");
-        String placa = scanner.nextLine();
-
-        try {
-            double valorPagar = parqueadero.calcularPago(placa);
-            System.out.println("Valor a pagar:  $" + String.format("%.2f",  valorPagar));
-
-            System.out.print("Ingrese el monto recibido:  ");
-            double montoRecibido = scanner.nextDouble();
-            scanner.nextLine();
-
-            if (montoRecibido >= valorPagar) {
-                double cambio = montoRecibido - valorPagar;
-                parqueadero.registrarPago(placa,  valorPagar);
-                System.out.println("Pago registrado exitosamente.");
-                System.out.println("Cambio a entregar:  $" + String.format("%.2f",  cambio));
-            } else {
-                System.out.println("Monto insuficiente para realizar el pago.");
-            }
-        } catch (Exception e) {
-            System.out.println("Error al gestionar pago:  " + e.getMessage());
-        }
+    
+    public String getId() { return id; }
+    public String getNombre() { return nombre; }
+    public String getIdentificacion() { return identificacion; }
+    public String getCorreo() { return correo; }
+    public String getTelefono() { return telefono; }
+    public boolean esMensualidad() { return esMensualidad; }
+    public CategoriaVehiculo getCategoriaPreferida() { return categoriaPreferida; }
+    
+    public void setEsMensualidad(boolean esMensualidad) { this.esMensualidad = esMensualidad; }
+    public void setCategoriaPreferida(CategoriaVehiculo categoriaPreferida) { this.categoriaPreferida = categoriaPreferida; }
+    
+    @Override
+    public String toString() {
+        return "Usuario{id='" + id + "', nombre='" + nombre + "', identificacion='" + identificacion + 
+               "', correo='" + correo + "', telefono='" + telefono + "', esMensualidad=" + esMensualidad + 
+               ", categoria=" + categoriaPreferida + "}";
     }
 }
 
-class Parqueadero {
-    private final String nombre;
-    private final int totalCeldas;
-    private final List<Celda> celdas;
-    private final Map<String,  Vehiculo> vehiculosEnParqueadero;
-    private final Map<String,  Usuario> usuarios;
-    private final List<RegistroEntradaSalida> registros;
-    private final List<Novedad> novedades;
-    private final Map<String,  Pago> pagos;
-
-    public Parqueadero(String nombre,  int totalCeldas) {
-        this.nombre = nombre;
-        this.totalCeldas = totalCeldas;
-        this.celdas = new ArrayList<>(totalCeldas);
-        this.vehiculosEnParqueadero = new HashMap<>();
-        this.usuarios = new HashMap<>();
-        this.registros = new ArrayList<>();
-        this.novedades = new ArrayList<>();
-        this.pagos = new HashMap<>();
-
-        for (int i = 1; i <= totalCeldas; i++) {
-            celdas.add(new Celda(i));
-        }
+class Pago {
+    private final String id;
+    private final RegistroEntradaSalida registro;
+    private double valor;
+    private double mora;
+    private LocalDateTime fechaPago;
+    private final MetodoPago metodoPago;
+    private final TipoPeriodo tipoPeriodo;
+    private boolean pagado;
+    private LocalDateTime fechaVencimiento;
+    
+    public Pago(RegistroEntradaSalida registro, double valor, MetodoPago metodoPago, TipoPeriodo tipoPeriodo) {
+        this.id = UUID.randomUUID().toString();
+        this.registro = registro;
+        this.valor = valor;
+        this.mora = 0.0;
+        this.fechaPago = LocalDateTime.now();
+        this.metodoPago = metodoPago;
+        this.tipoPeriodo = tipoPeriodo;
+        this.pagado = true;
+        this.fechaVencimiento = LocalDateTime.now().plusDays(30);
     }
-
-    public void registrarEntrada(Vehiculo vehiculo,  String idUsuario) throws Exception {
-        if (vehiculosEnParqueadero.containsKey(vehiculo.getPlaca())) {
-            throw new Exception("El vehículo ya se encuentra en el parqueadero.");
-        }
-
-        if (!usuarios.containsKey(idUsuario)) {
-            throw new Exception("Usuario no registrado.");
-        }
-
-        Celda celdaDisponible = encontrarCeldaDisponible();
-        if (celdaDisponible == null) {
-            throw new Exception("No hay celdas disponibles.");
-        }
-
-        celdaDisponible.ocupar(vehiculo);
-        vehiculosEnParqueadero.put(vehiculo.getPlaca(),  vehiculo);
-        registros.add(new RegistroEntradaSalida(vehiculo,  usuarios.get(idUsuario),  celdaDisponible,  true));
-
-        System.out.println("Vehículo asignado a la celda #" + celdaDisponible.getNumero());
+    
+    public Pago(double valor, MetodoPago metodoPago, TipoPeriodo tipoPeriodo, LocalDateTime fechaVencimiento) {
+        this.id = UUID.randomUUID().toString();
+        this.registro = null;
+        this.valor = valor;
+        this.mora = 0.0;
+        this.fechaPago = null;
+        this.metodoPago = metodoPago;
+        this.tipoPeriodo = tipoPeriodo;
+        this.pagado = false;
+        this.fechaVencimiento = fechaVencimiento;
     }
-
-    public void registrarSalida(String placa) throws Exception {
-        if (!vehiculosEnParqueadero.containsKey(placa)) {
-            throw new Exception("El vehículo no se encuentra en el parqueadero.");
-        }
-
-        Celda celda = encontrarCeldaPorVehiculo(placa);
-        if (celda != null) {
-            celda.liberar();
-        }
-
-        Vehiculo vehiculo = vehiculosEnParqueadero.remove(placa);
-        if (vehiculo != null) {
-            registros.add(new RegistroEntradaSalida(vehiculo,  null,  celda,  false));
-        }
+    
+    public String getId() { return id; }
+    public RegistroEntradaSalida getRegistro() { return registro; }
+    public double getValor() { return valor; }
+    public double getMora() { return mora; }
+    public LocalDateTime getFechaPago() { return fechaPago; }
+    public MetodoPago getMetodoPago() { return metodoPago; }
+    public TipoPeriodo getTipoPeriodo() { return tipoPeriodo; }
+    public boolean isPagado() { return pagado; }
+    public LocalDateTime getFechaVencimiento() { return fechaVencimiento; }
+    
+    public void setMora(double mora) { this.mora = mora; }
+    public void setFechaPago(LocalDateTime fechaPago) { this.fechaPago = fechaPago; }
+    public void setPagado(boolean pagado) { this.pagado = pagado; }
+    
+    public double getTotal() {
+        return valor + mora;
     }
-
-    public void registrarUsuario(Usuario usuario) throws Exception {
-        if (usuarios.containsKey(usuario.getId())) {
-            throw new Exception("Ya existe un usuario con ese ID.");
+    
+    @Override
+    public String toString() {
+        String vehiculoInfo = "N/A";
+        if (registro != null && registro.getVehiculo() != null) {
+            vehiculoInfo = registro.getVehiculo().getPlaca();
+        } else if (registro != null) {
+            vehiculoInfo = "Sin vehículo";
         }
-        usuarios.put(usuario.getId(),  usuario);
+        
+        return "Pago{id='" + id + "', vehiculo=" + vehiculoInfo + 
+               ", valor=$" + String.format("%.2f", valor) + 
+               ", mora=$" + String.format("%.2f", mora) + 
+               ", total=$" + String.format("%.2f", getTotal()) +
+               ", tipo=" + tipoPeriodo + 
+               ", fechaVencimiento=" + fechaVencimiento +
+               ", pagado=" + (pagado ? "Sí" : "No") +
+               ", metodoPago=" + metodoPago + "}";
     }
+}
 
-    public int getTotalCeldas() {
-        return totalCeldas;
+class Vehiculo {
+    private final String placa;
+    private final String marca;
+    private final String modelo;
+    private final CategoriaVehiculo categoria;
+    private Usuario propietario;
+    
+    public Vehiculo(String placa, String marca, String modelo, CategoriaVehiculo categoria) {
+        this.placa = placa;
+        this.marca = marca;
+        this.modelo = modelo;
+        this.categoria = categoria;
+        this.propietario = null;
     }
-
-    public int getCeldasDisponibles() {
-        int disponibles = 0;
-        for (Celda c :  celdas) {
-            if (!c.isOcupada()) disponibles++;
-        }
-        return disponibles;
+    
+    public Vehiculo(String placa, String marca, String modelo, CategoriaVehiculo categoria, Usuario propietario) {
+        this.placa = placa;
+        this.marca = marca;
+        this.modelo = modelo;
+        this.categoria = categoria;
+        this.propietario = propietario;
     }
-
-    public void registrarNovedad(String placa,  String descripcion) throws Exception {
-        Vehiculo vehiculo = vehiculosEnParqueadero.get(placa);
-        if (vehiculo == null) {
-            throw new Exception("El vehículo no se encuentra en el parqueadero.");
-        }
-        novedades.add(new Novedad(vehiculo,  descripcion,  LocalDateTime.now()));
-    }
-
-    public double calcularPago(String placa) throws Exception {
-        Vehiculo vehiculo = vehiculosEnParqueadero.get(placa);
-        if (vehiculo == null) {
-            throw new Exception("El vehículo no se encuentra en el parqueadero.");
-        }
-
-        RegistroEntradaSalida registroEntrada = encontrarRegistroEntrada(placa);
-        if (registroEntrada == null) {
-            throw new Exception("No se encontró registro de entrada para el vehículo.");
-        }
-
-        long minutos = java.time.Duration.between(registroEntrada.getFechaHora(),  LocalDateTime.now()).toMinutes();
-        double tarifaPorHora = vehiculo.getTipo() == Vehiculo.TipoVehiculo.CARRO ? 2000 :  1000;
-
-        return Math.ceil(minutos / 60.0) * tarifaPorHora;
-    }
-
-    public void registrarPago(String placa,  double valor) throws Exception {
-        if (!vehiculosEnParqueadero.containsKey(placa)) {
-            throw new Exception("El vehículo no se encuentra en el parqueadero.");
-        }
-        pagos.put(placa,  new Pago(placa,  valor,  LocalDateTime.now()));
-    }
-
-    private Celda encontrarCeldaDisponible() {
-        for (Celda c :  celdas) {
-            if (!c.isOcupada()) return c;
-        }
-        return null;
-    }
-
-    private Celda encontrarCeldaPorVehiculo(String placa) {
-        for (Celda c :  celdas) {
-            if (c.getVehiculo() != null && c.getVehiculo().getPlaca().equals(placa)) {
-                return c;
-            }
-        }
-        return null;
-    }
-
-    private RegistroEntradaSalida encontrarRegistroEntrada(String placa) {
-        for (int i = registros.size() - 1; i >= 0; i--) {
-            RegistroEntradaSalida registro = registros.get(i);
-            if (registro.getVehiculo().getPlaca().equals(placa) && registro.isEntrada()) {
-                return registro;
-            }
-        }
-        return null;
+    
+    public String getPlaca() { return placa; }
+    public String getMarca() { return marca; }
+    public String getModelo() { return modelo; }
+    public CategoriaVehiculo getCategoria() { return categoria; }
+    public Usuario getPropietario() { return propietario; }
+    
+    public void setPropietario(Usuario propietario) { this.propietario = propietario; }
+    
+    @Override
+    public String toString() {
+        return "Vehiculo{placa='" + placa + "', marca='" + marca + "', modelo='" + modelo + 
+               "', categoria=" + categoria + 
+               ", propietario=" + (propietario != null ? propietario.getNombre() : "Ninguno") + "}";
     }
 }
 
@@ -291,198 +213,419 @@ class Celda {
     private final int numero;
     private boolean ocupada;
     private Vehiculo vehiculo;
-
+    private final boolean esMensualidad;
+    
     public Celda(int numero) {
         this.numero = numero;
         this.ocupada = false;
         this.vehiculo = null;
+        this.esMensualidad = false;
     }
-
-    public void ocupar(Vehiculo vehiculo) {
-        this.ocupada = true;
-        this.vehiculo = vehiculo;
-    }
-
-    public void liberar() {
+    
+    public Celda(int numero, boolean esMensualidad) {
+        this.numero = numero;
         this.ocupada = false;
         this.vehiculo = null;
+        this.esMensualidad = esMensualidad;
     }
-
-    public int getNumero() {
-        return numero;
+    
+    public boolean isOcupada() { return ocupada; }
+    public void asignarVehiculo(Vehiculo vehiculo) {
+        this.vehiculo = vehiculo;
+        this.ocupada = true;
     }
-
-    public boolean isOcupada() {
-        return ocupada;
+    
+    public void liberarCelda() {
+        this.vehiculo = null;
+        this.ocupada = false;
     }
-
-    public Vehiculo getVehiculo() {
-        return vehiculo;
-    }
-}
-
-class Vehiculo {
-    public enum TipoVehiculo {
-        CARRO,  MOTO
-    }
-
-    private final String placa;
-    private final TipoVehiculo tipo;
-
-    public Vehiculo(String placa,  TipoVehiculo tipo) {
-        this.placa = placa;
-        this.tipo = tipo;
-    }
-
-    public String getPlaca() {
-        return placa;
-    }
-
-    public TipoVehiculo getTipo() {
-        return tipo;
-    }
-
+    
+    public int getNumero() { return numero; }
+    public Vehiculo getVehiculo() { return vehiculo; }
+    public boolean esCeldaMensualidad() { return esMensualidad; }
+    
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Vehiculo vehiculo = (Vehiculo) obj;
-        return Objects.equals(placa, vehiculo.placa);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(placa);
-    }
-}
-
-class Usuario {
-    public enum TipoUsuario {
-        CLIENTE,  ADMIN
-    }
-
-    private final String id;
-    private final String nombre;
-    private final String telefono;
-    private final TipoUsuario tipo;
-
-    public Usuario(String id,  String nombre,  String telefono,  TipoUsuario tipo) {
-        this.id = id;
-        this.nombre = nombre;
-        this.telefono = telefono;
-        this.tipo = tipo;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public String getTelefono() {
-        return telefono;
-    }
-
-    public TipoUsuario getTipo() {
-        return tipo;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Usuario usuario = (Usuario) obj;
-        return Objects.equals(id, usuario.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
+    public String toString() {
+        return "Celda{numero=" + numero + ", ocupada=" + ocupada + 
+               ", tipo=" + (esMensualidad ? "Mensualidad" : "Ocasional") + 
+               ", vehiculo=" + (vehiculo != null ? vehiculo.getPlaca() : "Ninguno") + "}";
     }
 }
 
 class RegistroEntradaSalida {
+    private final String id;
     private final Vehiculo vehiculo;
-    private final Usuario usuario;
+    private final LocalDateTime fechaEntrada;
+    private LocalDateTime fechaSalida;
     private final Celda celda;
-    private final LocalDateTime fechaHora;
-    private final boolean entrada;
-
-    public RegistroEntradaSalida(Vehiculo vehiculo,  Usuario usuario,  Celda celda,  boolean entrada) {
+    private final boolean esMensualidad;
+    
+    public RegistroEntradaSalida(Vehiculo vehiculo, Celda celda) {
+        this.id = UUID.randomUUID().toString();
         this.vehiculo = vehiculo;
-        this.usuario = usuario;
         this.celda = celda;
-        this.fechaHora = LocalDateTime.now();
-        this.entrada = entrada;
+        this.fechaEntrada = LocalDateTime.now();
+        this.fechaSalida = null;
+        this.esMensualidad = celda.esCeldaMensualidad() || 
+                            (vehiculo.getPropietario() != null && vehiculo.getPropietario().esMensualidad());
     }
-
-    public Vehiculo getVehiculo() {
-        return vehiculo;
+    
+    public void registrarSalida() {
+        this.fechaSalida = LocalDateTime.now();
+        celda.liberarCelda();
     }
-
-    public Usuario getUsuario() {
-        return usuario;
+    
+    public String getId() { return id; }
+    public Vehiculo getVehiculo() { return vehiculo; }
+    public LocalDateTime getFechaEntrada() { return fechaEntrada; }
+    public LocalDateTime getFechaSalida() { return fechaSalida; }
+    public Celda getCelda() { return celda; }
+    public boolean esRegistroMensualidad() { return esMensualidad; }
+    
+    public long getDuracionMinutos() {
+        return Duration.between(fechaEntrada, fechaSalida != null ? fechaSalida : LocalDateTime.now()).toMinutes();
     }
-
-    public Celda getCelda() {
-        return celda;
-    }
-
-    public LocalDateTime getFechaHora() {
-        return fechaHora;
-    }
-
-    public boolean isEntrada() {
-        return entrada;
-    }
-}
-
-class Novedad {
-    private final Vehiculo vehiculo;
-    private final String descripcion;
-    private final LocalDateTime fechaHora;
-
-    public Novedad(Vehiculo vehiculo,  String descripcion,  LocalDateTime fechaHora) {
-        this.vehiculo = vehiculo;
-        this.descripcion = descripcion;
-        this.fechaHora = fechaHora;
-    }
-
-    public Vehiculo getVehiculo() {
-        return vehiculo;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public LocalDateTime getFechaHora() {
-        return fechaHora;
+    
+    @Override
+    public String toString() {
+        return "RegistroEntradaSalida{id='" + id + "', vehiculo=" + vehiculo.getPlaca() + 
+               ", fechaEntrada=" + fechaEntrada + 
+               ", fechaSalida=" + (fechaSalida != null ? fechaSalida : "Aún no ha salido") + 
+               ", celda=" + celda.getNumero() + 
+               ", tipo=" + (esMensualidad ? "Mensualidad" : "Ocasional") + "}";
     }
 }
 
-class Pago {
-    private final String placaVehiculo;
-    private final double valor;
-    private final LocalDateTime fechaHora;
-
-    public Pago(String placaVehiculo,  double valor,  LocalDateTime fechaHora) {
-        this.placaVehiculo = placaVehiculo;
-        this.valor = valor;
-        this.fechaHora = fechaHora;
+class CalcMora implements ICalcMora {
+    private static final double PORCENTAJE_MORA_DIARIO = 0.05;
+    
+    @Override
+    public double calcularMora(Pago pago, LocalDateTime fechaActual) {
+        if (pago.isPagado() || pago.getFechaVencimiento() == null || 
+            fechaActual.isBefore(pago.getFechaVencimiento())) {
+            return 0.0;
+        }
+        
+        long diasRetraso = Duration.between(pago.getFechaVencimiento(), fechaActual).toDays();
+        return pago.getValor() * PORCENTAJE_MORA_DIARIO * diasRetraso;
     }
+}
 
-    public String getPlacaVehiculo() {
-        return placaVehiculo;
+class GestorPagos implements IGestorPagos {
+    private final List<Pago> pagos = new ArrayList<>();
+    private final ICalcMora calcMora = new CalcMora();
+    
+    @Override
+    public void crearPago(Pago pago) {
+        pagos.add(pago);
+        System.out.println("✅ Pago creado exitosamente: " + pago.getId());
     }
-
-    public double getValor() {
-        return valor;
+    
+    @Override
+    public Pago obtenerPago(String id) {
+        for (Pago pago : pagos) {
+            if (pago.getId().equals(id)) {
+                return pago;
+            }
+        }
+        return null;
     }
+    
+    @Override
+    public List<Pago> obtenerTodosLosPagos() {
+        return new ArrayList<>(pagos);
+    }
+    
+    @Override
+    public List<Pago> obtenerPagosPorUsuario(Usuario usuario) {
+        return pagos.stream()
+            .filter(p -> p.getRegistro() != null && 
+                         p.getRegistro().getVehiculo() != null &&
+                         p.getRegistro().getVehiculo().getPropietario() != null &&
+                         p.getRegistro().getVehiculo().getPropietario().getId().equals(usuario.getId()))
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Pago> obtenerPagosPorCategoria(CategoriaVehiculo categoria) {
+        return pagos.stream()
+            .filter(p -> (p.getRegistro() != null && 
+                          p.getRegistro().getVehiculo() != null &&
+                          p.getRegistro().getVehiculo().getCategoria() == categoria) ||
+                         (p.getRegistro() == null && categoria == CategoriaVehiculo.AUTOMOVIL))
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Pago> obtenerPagosPorTipo(TipoPeriodo tipo) {
+        return pagos.stream()
+            .filter(p -> p.getTipoPeriodo() == tipo)
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Pago> obtenerPagosPorMetodo(MetodoPago metodo) {
+        return pagos.stream()
+            .filter(p -> p.getMetodoPago() == metodo)
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Pago> obtenerPagosPorRangoFechas(LocalDateTime inicio, LocalDateTime fin) {
+        return pagos.stream()
+            .filter(p -> p.getFechaPago() != null && 
+                         !p.getFechaPago().isBefore(inicio) && 
+                         !p.getFechaPago().isAfter(fin))
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public void actualizarPago(Pago pago) {
+        System.out.println("✅ Pago actualizado: " + pago.getId());
+    }
+    
+    @Override
+    public void eliminarPago(String id) {
+        pagos.removeIf(p -> p.getId().equals(id));
+        System.out.println("✅ Pago eliminado: " + id);
+    }
+    
+    @Override
+    public double calcularTotalIngresos() {
+        return pagos.stream()
+            .mapToDouble(Pago::getTotal)
+            .sum();
+    }
+    
+    @Override
+    public double calcularTotalMora() {
+        LocalDateTime ahora = LocalDateTime.now();
+        return pagos.stream()
+            .mapToDouble(p -> calcMora.calcularMora(p, ahora))
+            .sum();
+    }
+    
+    public void actualizarTodasLasMoras() {
+        LocalDateTime ahora = LocalDateTime.now();
+        pagos.stream()
+            .filter(p -> !p.isPagado())
+            .forEach(p -> p.setMora(calcMora.calcularMora(p, ahora)));
+        System.out.println("✅ Moras actualizadas para todos los pagos pendientes");
+    }
+    
+    public List<Pago> obtenerPagosPendientes() {
+        return pagos.stream()
+            .filter(p -> !p.isPagado())
+            .collect(Collectors.toList());
+    }
+    
+    public List<Pago> obtenerPagosVencidos() {
+        LocalDateTime ahora = LocalDateTime.now();
+        return pagos.stream()
+            .filter(p -> !p.isPagado() && p.getFechaVencimiento() != null && p.getFechaVencimiento().isBefore(ahora))
+            .collect(Collectors.toList());
+    }
+}
 
-    public LocalDateTime getFechaHora() {
-        return fechaHora;
+public class Parqueadero {
+    private final List<Celda> celdas;
+    private final List<RegistroEntradaSalida> registros = new ArrayList<>();
+    private final List<Usuario> usuarios = new ArrayList<>();
+    private final GestorPagos gestorPagos = new GestorPagos();
+    private final Map<String, RegistroEntradaSalida> vehiculosEnParqueadero = new HashMap<>();
+    
+    public Parqueadero(int totalCeldas, int celdasMensualidad) {
+        celdas = new ArrayList<>(totalCeldas);
+        
+        for (int i = 1; i <= (totalCeldas - celdasMensualidad); i++) {
+            celdas.add(new Celda(i, false));
+        }
+        
+        for (int i = totalCeldas - celdasMensualidad + 1; i <= totalCeldas; i++) {
+            celdas.add(new Celda(i, true));
+        }
+    }
+    
+    public void registrarUsuario(Usuario usuario) {
+        usuarios.add(usuario);
+        System.out.println("✅ Usuario registrado: " + usuario.getNombre());
+    }
+    
+    public Usuario buscarUsuarioPorId(String id) {
+        for (Usuario usuario : usuarios) {
+            if (usuario.getId().equals(id)) {
+                return usuario;
+            }
+        }
+        return null;
+    }
+    
+    public Usuario buscarUsuarioPorIdentificacion(String identificacion) {
+        for (Usuario usuario : usuarios) {
+            if (usuario.getIdentificacion().equals(identificacion)) {
+                return usuario;
+            }
+        }
+        return null;
+    }
+    
+    public boolean registrarEntrada(Vehiculo vehiculo) {
+        if (vehiculosEnParqueadero.containsKey(vehiculo.getPlaca())) {
+            System.out.println("❌ El vehículo ya se encuentra en el parqueadero.");
+            return false;
+        }
+        
+        boolean necesitaMensualidad = vehiculo.getPropietario() != null && 
+                                     vehiculo.getPropietario().esMensualidad();
+        
+        for (Celda celda : celdas) {
+            if (!celda.isOcupada() && celda.esCeldaMensualidad() == necesitaMensualidad) {
+                celda.asignarVehiculo(vehiculo);
+                RegistroEntradaSalida registro = new RegistroEntradaSalida(vehiculo, celda);
+                registros.add(registro);
+                vehiculosEnParqueadero.put(vehiculo.getPlaca(), registro);
+                System.out.println("✅ Vehículo registrado en entrada. Celda asignada: " + celda.getNumero());
+                return true;
+            }
+        }
+        
+        System.out.println("❌ No hay celdas disponibles del tipo requerido.");
+        return false;
+    }
+    
+    public boolean registrarSalida(String placa) {
+        RegistroEntradaSalida registro = vehiculosEnParqueadero.remove(placa);
+        if (registro == null) {
+            System.out.println("❌ Vehículo no encontrado o ya ha salido.");
+            return false;
+        }
+        
+        registro.registrarSalida();
+        
+        if (!registro.esRegistroMensualidad()) {
+            double valor = calcularPagoPorTiempo(registro);
+            Pago pago = new Pago(registro, valor, MetodoPago.EFECTIVO, determinarTipoPeriodo(registro));
+            gestorPagos.crearPago(pago);
+            System.out.println("💰 Pago generado: $" + String.format("%.2f", valor) + 
+                             " por " + registro.getDuracionMinutos() + " minutos");
+        }
+        
+        System.out.println("✅ Vehículo salió del parqueadero.");
+        return true;
+    }
+    
+    private TipoPeriodo determinarTipoPeriodo(RegistroEntradaSalida registro) {
+        long minutos = registro.getDuracionMinutos();
+        if (minutos <= 60) return TipoPeriodo.HORA;
+        if (minutos <= 1440) return TipoPeriodo.DIA;
+        if (minutos <= 10080) return TipoPeriodo.SEMANA;
+        return TipoPeriodo.MENSUALIDAD;
+    }
+    
+    private double calcularPagoPorTiempo(RegistroEntradaSalida registro) {
+        CategoriaVehiculo categoria = registro.getVehiculo().getCategoria();
+        long minutos = registro.getDuracionMinutos();
+        
+        if (minutos <= 60) return categoria.getTarifaHora();
+        if (minutos <= 1440) return categoria.getTarifaDia();
+        if (minutos <= 10080) return categoria.getTarifaSemana();
+        return categoria.getTarifaSemana() * 4;
+    }
+    
+    public void registrarPagoMensualidad(Usuario usuario, MetodoPago metodoPago) {
+        if (!usuario.esMensualidad()) {
+            System.out.println("❌ El usuario no tiene contrato de mensualidad.");
+            return;
+        }
+        
+        CategoriaVehiculo categoria = usuario.getCategoriaPreferida();
+        double tarifaMensual = categoria.getTarifaSemana() * 4;
+        LocalDateTime fechaVencimiento = LocalDateTime.now().plusMonths(1);
+        Pago pago = new Pago(tarifaMensual, metodoPago, TipoPeriodo.MENSUALIDAD, fechaVencimiento);
+        gestorPagos.crearPago(pago);
+        System.out.println("💰 Pago mensual registrado: $" + String.format("%.2f", tarifaMensual));
+    }
+    
+    public void mostrarEstado() {
+        System.out.println("\n=== ESTADO DEL PARQUEADERO ===");
+        celdas.forEach(System.out::println);
+    }
+    
+    public void mostrarRegistros() {
+        System.out.println("\n=== REGISTROS DE ENTRADA/SALIDA ===");
+        registros.forEach(System.out::println);
+    }
+    
+    public void mostrarUsuarios() {
+        System.out.println("\n=== USUARIOS REGISTRADOS ===");
+        usuarios.forEach(System.out::println);
+    }
+    
+    public void mostrarPagos() {
+        System.out.println("\n=== REGISTRO DE PAGOS ===");
+        gestorPagos.obtenerTodosLosPagos().forEach(System.out::println);
+    }
+    
+    public void mostrarIngresosTotales() {
+        System.out.println("\n=== INGRESOS TOTALES ===");
+        System.out.println("Total recaudado: $" + String.format("%.2f", gestorPagos.calcularTotalIngresos()));
+    }
+    
+    public void mostrarTarifas() {
+        System.out.println("\n=== TARIFAS DEL PARQUEADERO ===");
+        System.out.println("CATEGORÍA\t\tHORA\t\tDÍA\t\tNOCHE\t\tSEMANA");
+        for (CategoriaVehiculo categoria : CategoriaVehiculo.values()) {
+            System.out.printf("%-15s\t$%,-8d\t$%,-6d\t$%,-8d\t$%,-8d%n",  
+                categoria.name(),  
+                categoria.getTarifaHora(),  
+                categoria.getTarifaDia(),  
+                categoria.getTarifaNoche(),  
+                categoria.getTarifaSemana());
+        }
+        System.out.println("\nMENSUALIDAD: 4 semanas de tarifa semanal");
+    }
+    
+    public void mostrarPagosFiltrados() {
+        System.out.println("\n=== FILTROS DE PAGOS ===");
+        System.out.println("1. Por usuario");
+        System.out.println("2. Por categoría");
+        System.out.println("3. Por tipo de periodo");
+        System.out.println("4. Por método de pago");
+        System.out.println("5. Por rango de fechas");
+        System.out.println("6. Pagos pendientes");
+        System.out.println("7. Pagos vencidos");
+        
+        System.out.println("\n--- Pagos pendientes ---");
+        gestorPagos.obtenerPagosPendientes().forEach(System.out::println);
+        
+        System.out.println("\n--- Pagos vencidos ---");
+        gestorPagos.obtenerPagosVencidos().forEach(System.out::println);
+    }
+    
+    public static void main(String[] args) {
+        Parqueadero parqueadero = new Parqueadero(10, 3);
+        parqueadero.mostrarTarifas();
+        
+        Usuario usuario1 = new Usuario("Carlos Pérez", "123456789", "carlos@email.com", "3001234567", true, CategoriaVehiculo.AUTOMOVIL);
+        Usuario usuario2 = new Usuario("Ana Gómez", "987654321", "ana@email.com", "3017654321", false, CategoriaVehiculo.MOTOCICLETA);
+        parqueadero.registrarUsuario(usuario1);
+        parqueadero.registrarUsuario(usuario2);
+        
+        Vehiculo v1 = new Vehiculo("ABC123", "Toyota", "Corolla", CategoriaVehiculo.AUTOMOVIL, usuario1);
+        Vehiculo v2 = new Vehiculo("XYZ789", "Mazda", "3", CategoriaVehiculo.MOTOCICLETA, usuario2);
+        Vehiculo v3 = new Vehiculo("DEF456", "Renault", "Logan", CategoriaVehiculo.AUTOMOVIL);
+        
+        parqueadero.registrarEntrada(v1);
+        parqueadero.registrarEntrada(v2);
+        parqueadero.registrarEntrada(v3);
+        parqueadero.mostrarEstado();
+        parqueadero.registrarSalida("XYZ789");
+        parqueadero.registrarPagoMensualidad(usuario1, MetodoPago.TRANSFERENCIA);
+        parqueadero.gestorPagos.actualizarTodasLasMoras();
+        parqueadero.mostrarRegistros();
+        parqueadero.mostrarUsuarios();
+        parqueadero.mostrarPagos();
+        parqueadero.mostrarPagosFiltrados();
+        parqueadero.mostrarIngresosTotales();
     }
 }
